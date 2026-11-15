@@ -48,6 +48,15 @@ This table is a self-check against the published license text. It is not
 legal advice and it does not bind the original licensors.
 
 
+## Non-commercial status (informational)
+
+This repository is a personal learning project. The 3D files are shared for
+no fee; the repository has no sponsorship file, no donation or payment link,
+no homepage, and no paid tier. The maintainer receives no revenue from it.
+
+This paragraph describes the facts of this repository. It adds no terms for
+reusers and is not legal advice.
+
 ## Downstream use and responsibility (informational)
 
 - This repository grants no rights beyond CC BY-NC-SA 4.0 and imposes no
