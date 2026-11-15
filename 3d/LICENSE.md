@@ -40,6 +40,13 @@ text or link included. No additional terms may be imposed on downstream users.
 
 This is community fan artwork. It is not affiliated with, endorsed by, or
 sponsored by DeepSeek, the original artists, or any derivative author.
-The assets are provided "as is", without warranties of any kind.
+The assets are provided "as is", without warranties of any kind. Section 5
+of CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.en)
+contains the license's own disclaimer of warranties and limitation of
+liability; it addresses the liability of the Licensor, and it notes that such
+disclaimers may not apply in full in some jurisdictions. This repository
+imposes no additional terms on downstream recipients, as required by
+Sections 2(a)(5)(C) and 3(b)(3). Reusers remain responsible for complying
+with the NonCommercial, attribution and ShareAlike conditions.
 
 This notice is informational and is not legal advice.

@@ -47,6 +47,28 @@ later, or a BY-NC-SA Compatible License, when Adapted Material is shared.
 This table is a self-check against the published license text. It is not
 legal advice and it does not bind the original licensors.
 
+
+## Downstream use and responsibility (informational)
+
+- This repository grants no rights beyond CC BY-NC-SA 4.0 and imposes no
+  additional or different terms on downstream recipients. Sections
+  2(a)(5)(C) and 3(b)(3) of the license prohibit exactly that.
+- Section 5 disclaims warranties and limits liability **of the Licensor**
+  (the original rights holders) "to the extent possible", and states that
+  such disclaimers "may not apply" in full where the law does not allow them.
+  That clause is not a promise made by this repository about how others use
+  the files.
+- Section 6(a) terminates the rights of anyone who fails to comply, and
+  Section 6(b) expressly preserves the Licensor's right to seek remedies.
+  Our own continuing obligations are the attribution, ShareAlike and
+  no-additional-terms duties listed in the self-check table above.
+- The "AS IS" disclaimer in the root `LICENSE` covers original code only.
+
+Reusers must judge for themselves whether their use is NonCommercial and
+must preserve attribution and ShareAlike conditions. This section is
+informational only; it is not an additional license term and it is not
+legal advice.
+
 ## Terminology
 
 CC BY-NC-SA 4.0 is not an open-source license under the Open Source
