@@ -1,0 +1,19 @@
+# never publish
+*.db
+*.gguf
+keys.local.json
+.lan_token
+dbg.log
+局域网接入.txt
+手机接入.png
+*日记*
+*.bak
+*.bak-*
+大肥鱼线上/
+开源参考/
+开源表情/
+.edge-mind/
+.大肥鱼_app/
+.大肥鱼_webview/
+__pycache__/
+*.pyc

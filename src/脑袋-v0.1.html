@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<script>
+if (typeof URLSearchParams === 'undefined') {
+  window.URLSearchParams = function (s) {
+    this._p = String(s || location.search).replace(/^\?/, '').split('&');
+  };
+  window.URLSearchParams.prototype.get = function (k) {
+    for (var i = 0; i < this._p.length; i++) {
+      var kv = this._p[i].split('=');
+      if (decodeURIComponent(kv[0] || '') === k)
+        return decodeURIComponent((kv[1] || '').replace(/\+/g, ' '));
+    }
+    return null;
+  };
+  window.URLSearchParams.prototype.has = function (k) { return this.get(k) !== null; };
+}
+</script>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>大肥鱼 · v0.2</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:#08121b;font-family:"Microsoft YaHei",system-ui,sans-serif;
+            color:#d8e6f2;overflow:hidden;}
+  .app{display:flex;height:100%;}
+
+  .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+         padding-bottom:64px;
+         background:radial-gradient(ellipse at 50% 34%,#1a3d5c 0%,#08111a 70%);}
+
+  /* 水下氛围：她自己待的地方，不是一块空背景板 */
+  .amb{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+  .amb i{position:absolute;bottom:-40px;border-radius:50%;
+         background:radial-gradient(circle at 32% 30%,rgba(190,235,255,.55),rgba(130,195,255,.06));
+         border:1px solid rgba(160,220,255,.16);
+         animation:rise linear infinite;}
+  @keyframes rise{0%{transform:translateY(0) scale(.55);opacity:0;}
+                  10%{opacity:.5;}
+                  85%{opacity:.3;}
+                  100%{transform:translateY(-108vh) scale(1.05);opacity:0;}}
+
+  .selfcam{position:absolute;right:20px;top:20px;width:150px;border-radius:14px;overflow:hidden;
+           border:1px solid rgba(140,200,240,.25);background:#050d14;
+           box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .selfcam video{display:block;width:100%;height:auto;transform:scaleX(-1);}
+  .selfcam .box{position:absolute;border:1.5px solid rgba(95,232,160,.75);border-radius:6px;display:none;}
+
+  .headwrap{position:relative;z-index:2;perspective:1000px;}
+  .head{transform-style:preserve-3d;transition:transform .07s linear;
+        filter:drop-shadow(0 30px 46px rgba(0,0,0,.66));}
+
+  .wave{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+        border:2px solid rgba(95,192,232,.3);border-radius:50%;opacity:0;pointer-events:none;}
+  .wave.on{animation:ripple 1.6s ease-out infinite;}
+  @keyframes ripple{0%{width:340px;height:340px;opacity:.45;}100%{width:660px;height:660px;opacity:0;}}
+
+  /* 字幕：像视频通话里的实时字幕，压在角色前面，别再被腿挡住 */
+  .sub{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);
+       max-width:min(660px,64vw);text-align:center;pointer-events:none;z-index:6;}
+  .sub span{display:inline-block;background:rgba(3,10,17,.9);backdrop-filter:blur(8px);
+            padding:11px 22px;border-radius:12px;font-size:17px;line-height:1.6;
+            color:#eaf6ff;opacity:0;transition:opacity .35s;
+            box-shadow:0 6px 22px rgba(0,0,0,.45);}
+  .sub.on span{opacity:1;}
+
+  /* 底部不再是按钮，只是一个"它在听"的指示 */
+  .micbar{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+          display:flex;gap:14px;align-items:center;}
+  .micdot{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.07);
+          display:flex;align-items:center;justify-content:center;}
+  .micdot i{width:11px;height:11px;border-radius:50%;background:#4a6b82;transition:background .3s;}
+  .micdot.on i{background:#4fd08a;animation:pulseMic 2.2s infinite;}
+  @keyframes pulseMic{0%{box-shadow:0 0 0 0 rgba(79,208,138,.5);}
+                      70%{box-shadow:0 0 0 12px rgba(79,208,138,0);}
+                      100%{box-shadow:0 0 0 0 rgba(79,208,138,0);}}
+
+  .state{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
+         font-size:12.5px;color:#5b8bb0;opacity:0;transition:opacity .4s;}
+  .state.on{opacity:1;}
+
+  /* 她在想：三个跳动的点，比干等着好受 */
+  .think{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);
+         display:none;gap:7px;align-items:center;}
+  .think.on{display:flex;}
+  .think i{width:7px;height:7px;border-radius:50%;background:#8cc3e8;
+           animation:tbounce 1.15s infinite ease-in-out;}
+  .think i:nth-child(2){animation-delay:.16s}
+  .think i:nth-child(3){animation-delay:.32s}
+  @keyframes tbounce{0%,65%,100%{opacity:.22;transform:translateY(0);}
+                     32%{opacity:1;transform:translateY(-5px);}}
+
+  /* 调试面板（默认藏着，地址加 ?debug 才出来） */
+  .dbg{position:fixed;right:0;top:0;bottom:0;width:300px;background:rgba(6,16,24,.96);
+       border-left:1px solid #1a3247;padding:14px 16px;font-size:12.5px;color:#8fb4d0;
+       display:none;flex-direction:column;gap:8px;overflow-y:auto;z-index:50;}
+  body.debug .dbg{display:flex;}
+  .dbg h3{font-size:13px;color:#eaf6ff;margin-bottom:4px;}
+  .dbg .row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #14283a;}
+  .dbg .row b{color:#eaf6ff;}
+  .ok{color:#6fe0a0 !important;} .off{color:#e0756b !important;}
+  .dbg button{padding:7px 0;border-radius:5px;border:1px solid #2a4f70;background:#132638;
+              color:#b8d4ea;font-size:12px;cursor:pointer;font-family:inherit;}
+  .dbg .say{background:#0e2030;border:1px solid #22496a;border-radius:6px;padding:9px;
+            font-size:12px;line-height:1.55;color:#c8dced;max-height:130px;overflow-y:auto;}
+
+  /* 实体模式：窄屏身体（旧手机/平板）不挤在一起 */
+  @media (max-width: 760px){
+    .selfcam{width:84px;right:10px;top:10px;}
+    .dbg{display:none !important;}
+    .head{max-height:58vh !important;}
+  }
+  #lanBar{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:60;
+          display:flex;gap:8px;width:min(92vw,560px);}
+  #lanBar input{flex:1;min-width:0;padding:12px 14px;border-radius:12px;
+          border:1px solid rgba(140,200,240,.4);background:rgba(6,18,28,.92);
+          color:#d8e6f2;font-size:16px;outline:none;}
+  #lanBar button{padding:12px 18px;border-radius:12px;border:0;
+          background:#2a6f97;color:#fff;font-size:16px;}
+
+  /* 生命层：海底场景、表情标签、可见互动、版本与体检 */
+  #sea{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+  #emoTag{position:fixed;left:50%;top:19%;transform:translate(-50%,8px);z-index:40;
+    padding:6px 16px;border-radius:999px;background:rgba(10,32,48,.82);
+    border:1px solid rgba(150,215,245,.35);color:#cfeaff;font-size:14px;
+    opacity:0;transition:opacity .35s,transform .35s;pointer-events:none;}
+  #emoTag.on{opacity:1;transform:translate(-50%,0);}
+  #pokeBubble{position:fixed;left:50%;top:29%;transform:translate(-50%,8px);z-index:40;
+    padding:9px 18px;border-radius:14px;background:rgba(8,28,42,.9);
+    border:1px solid rgba(150,215,245,.3);color:#e2f2ff;font-size:15px;
+    opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;}
+  #pokeBubble.on{opacity:1;transform:translate(-50%,0);}
+  #buildTag{position:fixed;right:10px;bottom:8px;z-index:50;cursor:pointer;
+    font-size:11px;color:rgba(180,215,235,.45);user-select:none;}
+  #toolBar{position:fixed;left:12px;bottom:12px;z-index:50;display:flex;gap:8px;flex-wrap:wrap;max-width:70vw;}
+  #toolBar button{padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13px;
+    color:#d8e6f2;background:rgba(8,28,42,.78);border:1px solid rgba(140,200,240,.3);}
+  #toolBar button:hover{background:rgba(30,90,125,.85);}
+  #doctorPanel{position:fixed;right:12px;bottom:34px;width:310px;max-height:72vh;overflow:auto;
+    z-index:70;display:none;padding:14px;border-radius:12px;color:#d8e6f2;
+    background:rgba(6,20,32,.96);border:1px solid rgba(140,200,240,.35);
+    box-shadow:0 18px 50px rgba(0,0,0,.55);font-size:13px;}
+  #doctorPanel.on{display:block;}
+  #doctorPanel .dhead{font-size:15px;font-weight:600;margin-bottom:10px;
+    display:flex;justify-content:space-between;}
+  #doctorClose{cursor:pointer;color:#9fc4dc;}
+  #doctorPanel .drow{display:flex;justify-content:space-between;gap:10px;
+    padding:6px 0;border-bottom:1px solid rgba(140,200,240,.12);}
+  #doctorPanel .drow b.ok{color:#7fe0a8;}
+  #doctorPanel .drow b.off{color:#ff8f8f;}
+  #doctorPanel .dtip{margin-top:10px;color:#8fb2c9;font-size:12px;line-height:1.6;}
+  @media (max-width: 760px){
+    #toolBar{bottom:70px;left:8px;gap:6px;}
+    #toolBar button{padding:7px 10px;font-size:12px;}
+    #doctorPanel{right:8px;bottom:112px;width:min(92vw,320px);}
+  }
+
+  /* 老设备没有 aspect-ratio 时，别让画布被拉成方块 */
+  @supports not (aspect-ratio: 1){
+    #fish{height:auto !important;max-width:min(92vw,72vh) !important;}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="sea" aria-hidden="true"></canvas>
+  <div class="amb" id="amb"></div>
+  <div class="wave" id="wave1"></div>
+
+  <div class="headwrap">
+    <canvas id="fish" class="head" width="1280" height="1280"
+            style="display:block;max-height:min(72vh,calc(100vh - 210px));width:auto;aspect-ratio:1;"></canvas>
+  </div>
+
+  <div class="selfcam">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="box" id="facebox"></div>
+  </div>
+
+  <div class="sub" id="sub"><span id="say"></span></div>
+  <div class="think" id="think"><i></i><i></i><i></i></div>
+  <div class="state" id="state"></div>
+
+  <div class="micbar">
+    <div class="micdot" id="micdot" title="麦克风一直开着"><i></i></div>
+  </div>
+</div>
+
+<!-- 调试面板：地址后面加 ?debug 才显示 -->
+<aside class="dbg">
+  <h3>调试</h3>
+  <div class="row"><span>摄像头</span><b id="s-cam">—</b></div>
+  <div class="row"><span>看到人</span><b id="s-see">—</b></div>
+  <div class="row"><span>转头角度</span><b id="s-ang">0°</b></div>
+  <div class="row"><span>麦克风</span><b id="s-mic">—</b></div>
+  <div class="row"><span>心情</span><b id="s-mood">—</b></div>
+  <div class="row"><span>大肥鱼</span><b id="s-ai">连接中</b></div>
+  <div class="row"><span>舵机</span><b id="s-servo">未连接</b></div>
+  <button id="btnServo">连接舵机（USB）</button>
+  <div class="say" id="dbgSay">……</div>
+</aside>
+
+<script src="形象/rig.js"></script>
+<script>
+// 实体模式：身体可能是一台旧手机/平板，WS 必须跟着页面所在的主机走；
+// 令牌从 URL 的 ?k= 透传，服务端在局域网模式下据此放行。
+const _lanKey = new URLSearchParams(location.search).get('k');
+const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://')
+             + location.hostname + ':8765/ws'
+             + (_lanKey ? '?k=' + encodeURIComponent(_lanKey) : '');
+const MAX_ANGLE = 34;
+const SLEW = 0.09;          // 转向速度：小一点，头才不像抽筋
+const DEAD_ZONE = 0.08;     // 人在中间这一带就别转，微小的框抖动不该带着头晃
+const GREET_COOLDOWN = 300000;   // 5 分钟才瞄一眼，不刷屏
+const DEMO = new URLSearchParams(location.search).has('demo');
+const DEBUG = new URLSearchParams(location.search).has('debug');
+// 全局作用域：「想起」计时与静音提示限流会被 loop() 和识别回调读取。
+// 之前误声明在 connectWS 内部，WS 一连上且空闲就 ReferenceError，渲染循环直接停摆。
+var nextDaydreamAt = Date.now() + 90000;
+var muteHintUntil = 0;
+if (DEBUG) document.body.classList.add('debug');
+
+let curAngle = 0, targetAngle = 0, curTilt = 0, targetTilt = 0;
+let lastSeen = 0, lastGreet = 0;
+/* "你的样子"多久重记一次。摄像头糊、光线变、你换发型换眼镜，都会让旧记录过时，
+ * 所以不是只记一次就完事，七天重新采一次。 */
+const FACE_TTL = 7 * 24 * 3600 * 1000;
+let faceArchivedAt = 0;
+try { faceArchivedAt = parseInt(localStorage.getItem('dfy_face_at') || '0', 10) || 0; } catch (e) {}
+let faceArchived = (Date.now() - faceArchivedAt) < FACE_TTL;
+let faceSince = 0;
+let talking = false, talkUntil = 0;
+let ws = null, wsReady = false;
+let camOK = false, listening = false, speakingNow = false, keepListening = false;
+let smoothX = 0.5, smoothY = 0.42;
+let nextBlinkAt = 0, blinkStart = -9999;
+let hearsYouUntil = 0;      // 她在听你说话的时间窗
+let thinkingUntil = 0;      // 从发出到第一句话落地，这段时间显示"在想"
+// 主动开口：第一次 5 分钟没动静就问一句，没回应就慢慢退避，你一说话就重置
+let proactiveGap = 5 * 60 * 1000;
+let nextProactive = Date.now() + proactiveGap;
+
+/* 心情不是一句话，是一组旋钮。
+ * 神经调质干的就这件事：一个化学信号调的不是某个功能，是整个系统的增益。
+ * 心情差的时候，她话少、懒得张望、更爱打盹、眨眼变稀、不主动找你。 */
+let herMood = 60;
+const opt = {
+  gazeSpeed: 0.09,     // 视线追随快慢
+  gazeDwell: 1400,     // 视线停留多久才换地方
+  blinkGap: 3400,      // 眨眼基准间隔
+  proactiveMul: 1,     // 主动开口的间隔倍率
+  soloMul: 1           // 自言自语间隔倍率
+};
+
+function tuneByMood(m) {
+  herMood = Math.max(0, Math.min(100, m));
+  const low = herMood < 40, mid = herMood < 56;
+  ACT_W.doze = low ? 24 : mid ? 16 : 12;
+  ACT_W.look = low ? 7 : mid ? 13 : 18;
+  ACT_W.hum = low ? 2 : mid ? 5 : 8;
+  ACT_W.swim = low ? 12 : mid ? 17 : 22;
+  opt.gazeSpeed = low ? 0.16 : mid ? 0.12 : 0.09;
+  opt.gazeDwell = low ? 700 : mid ? 1050 : 1400;
+  opt.blinkGap = low ? 5200 : mid ? 4200 : 3400;
+  opt.proactiveMul = low ? 2.6 : mid ? 1.5 : 1;
+  opt.soloMul = low ? 1.8 : mid ? 1.3 : 1;
+  const dbg = document.getElementById('s-mood');
+  if (dbg) dbg.textContent = herMood + (low ? ' 摆烂' : mid ? ' 有点蔫' : ' 还行');
+}
+
+/* 水里该有气泡 */
+(function makeBubbles() {
+  const box = document.getElementById('amb');
+  if (!box) return;
+  for (let i = 0; i < 15; i++) {
+    const b = document.createElement('i');
+    const s = 3 + Math.random() * 11;
+    b.style.cssText =
+      'left:' + (Math.random() * 100).toFixed(1) + '%;' +
+      'width:' + s.toFixed(1) + 'px;height:' + s.toFixed(1) + 'px;' +
+      'animation-duration:' + (13 + Math.random() * 17).toFixed(1) + 's;' +
+      'animation-delay:' + (-Math.random() * 25).toFixed(1) + 's;';
+    box.appendChild(b);
+  }
+})();
+
+const $ = id => document.getElementById(id);
+window.addEventListener('error', e => { document.title = 'JSERR ' + e.message; });
+const fishCv = $('fish');
+const fctx = fishCv.getContext('2d');
+const head = fishCv;
+
+/* ---------- 立绘 ---------- */
+let rigReady = false;
+Rig.load('形象/rig/').then(() => { rigReady = true; })
+  .catch(e => {
+    rigReady = false;
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);color:#ff6b6b;'
+      + 'background:rgba(40,0,0,.85);padding:14px 22px;border-radius:12px;font-size:15px;z-index:99;'
+      + 'border:1px solid rgba(255,107,107,.5);text-align:center;line-height:1.7';
+    b.innerHTML = '形象加载失败：' + String(e).slice(0, 80) + '<br>请按 Ctrl+Shift+R 强制刷新';
+    document.body.appendChild(b);
+  })
+  .catch(e => { console.warn('立绘加载失败', e); });
+
+/* ---------- 情绪 ---------- */
+let emotion = 'idle';
+let emotionUntil = 0;
+let action = 'none';
+let actionUntil = 0;
+function setEmotion(name, ms) {
+  if (!Rig.EMOTION[name]) name = 'idle';
+  emotion = name;
+  emotionUntil = Date.now() + (ms || 4200);
+}
+
+// 服务端 reply 自带的中文情绪标签 → 立绘表情
+const SRV_EMO = {
+  '开心': 'happy', '委屈': 'sad', '炸毛': 'angry',
+  '瞌睡': 'sleepy', '干饭': 'hungry', '思考': 'confused', '认真': 'serious'
+};
+
+// 再从中文里补更细的情绪（服务端只有 6 种，细节靠这里）
+// 词要够"强"：她平时嘴里常挂白饭、胖、本鲸，放宽了会一直换脸
+const EMO_RULES = [
+  [/呜呜|难过|想哭|好委屈|伤心/g, 'sad'],
+  [/生气|讨厌你|不理你了|炸毛|烦死/g, 'angry'],
+  [/饿了|想吃|饿死|干饭|投喂我/g, 'hungry'],
+  [/困了|想睡觉|好累|打哈欠/g, 'sleepy'],
+  [/喜欢你|爱你|抱抱|蹭蹭|最喜欢你/g, 'love'],
+  [/害羞|脸红|不好意思/g, 'shy'],
+  [/哈哈|好耶|嘿嘿|太好啦/g, 'happy'],
+  [/真的假的|竟然|居然|啊？|吃惊/g, 'surprise'],
+  [/不懂|啥意思|为什么啊|奇怪哦/g, 'confused'],
+  [/厉害吧|那还用说|我早知道/g, 'proud'],
+  [/紧张|不敢|忐忑/g, 'nervous'],
+  [/期待|迫不及待|快说快说/g, 'expect']
+];
+function emotionFromText(t) {
+  for (const [re, emo] of EMO_RULES) if (re.test(t)) return emo;
+  return null;
+}
+
+
+function setAI(t, cls) {
+  const el = $('s-ai'); el.textContent = t; el.className = cls || (t === '在线' ? 'ok' : 'off');
+}
+/* ===== 即时反应 =====
+ * 她开口前那几秒空白最伤"像不像活的"。人不是这样——先"嗯"一声，再想内容。
+ * 这句"嗯"是提前用她的音色录好的本地文件，零延迟、不花钱。
+ * 说出去 420 毫秒还没出声就先放一条，正式音频到了立刻掐掉它。 */
+const CUES = ['cue_01', 'cue_02', 'cue_03', 'cue_04', 'cue_06',
+              'cue_09', 'cue_10', 'cue_11', 'cue_12', 'cue_13', 'cue_14'];
+let cueTimer = null, cueEl = null;
+
+function armCue() {
+  clearTimeout(cueTimer);
+  cueTimer = setTimeout(() => {
+    if (audioPlaying || subTimeline.length) return;   // 她已经在说了，别多嘴
+    const name = CUES[(Math.random() * CUES.length) | 0];
+    try {
+      cueEl = new Audio('cue/' + name + '.mp3');
+      cueEl.volume = 0.95;
+      // 短句也是她的声音，麦克风一样会收走。之前这里什么防线都没有，
+      // "嗯，在呢"被识别成你说的活发上去，直接把自激循环点着了。
+      // 播放期间静音；元数据到了再按真实时长补一次，留 1.5s 余量。
+      muteFor(2600);
+      cueEl.addEventListener('loadedmetadata', () => {
+        if (cueEl && !isNaN(cueEl.duration)) muteFor(cueEl.duration * 1000 + 1500);
+      });
+      cueEl.addEventListener('ended', () => { muteFor(1200); });
+      cueEl.play().catch(() => {});
+    } catch (e) {}
+  }, 420);
+}
+
+function stopCue() {
+  clearTimeout(cueTimer);
+  if (cueEl) {
+    try { cueEl.pause(); cueEl.currentTime = 0; } catch (e) {}
+    cueEl = null;
+  }
+}
+
+function sendText(text) {
+  if (!wsReady) { setState('她还没连上，等两秒再说'); return; }
+  clog('send', text);
+  stopCue();
+  // 你一开口，她正在说的就该停。原来这里什么都不做，
+  // 上一轮的音频照旧往下播，两句话叠在一起。
+  if (audioPlaying || audioQ.length) stopAudio();
+  // 用户主动发话是明确意图：stopAudio 留的静音窗要清掉，
+  // 不然你连着说的第二句会被误丢。顺序不能反——先停再清。
+  muteUntil = 0;
+  ws.send(JSON.stringify({ type: 'text', data: text }));
+  armCue();
+}
+
+function connectWS() {
+  // 先掐掉旧连接。原来重连时不关旧的，万一旧连接是半死状态（TCP 还在、WS 已废），
+  // 页面里就挂着两个 ws 对象、两份 onmessage，同一条回复会被处理两遍——
+  // 听到的就是"同一句话说了又说，声音还不一样"。
+  if (ws) {
+    try { ws.onmessage = null; ws.onclose = null; ws.onerror = null; ws.close(); } catch (e) {}
+    ws = null;
+  }
+  try { ws = new WebSocket(WS_URL); } catch (e) { setAI('离线'); return; }
+  ws.onopen = () => { wsReady = true; setAI('在线'); clog('ws-open'); };
+  ws.onclose = ev => {
+    wsReady = false; setAI('离线');
+    clog('ws-close', 'code=' + ev.code + ' clean=' + ev.wasClean);
+    setTimeout(connectWS, 3000);
+  };
+  ws.onerror = () => { setAI('离线'); clog('ws-error'); };
+  let srvRound = -1;   // 服务端回合号：每条带声音的消息都盖章，旧回合的到达即扔。
+                     // 这是最后一道闸——不管哪条链路漏了旧音频，这里兜死。
+// nextDaydreamAt / muteHintUntil 在文件顶部全局声明，勿在此重复声明。
+ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (typeof m.r === 'number') {
+      if (m.r < srvRound) { clog('drop-old-round', m.type + ' r=' + m.r); return; }
+      srvRound = m.r;
+    }
+    if (m.text) noteSpoken(m.text);      // 记下她说过的字，用于挡回声
+    if (m.type === 'hello') { setAI('在线'); if (m.state && m.state.mood != null) tuneByMood(m.state.mood); }
+    if (m.type === 'notice' && m.text) {
+      // 你打断她时她回的那句"等等等等"——服务端发了，前端原来根本没接
+      setState(m.text);
+      noteSpoken(m.text);
+    }
+    if (m.type === 'audio' && m.data) {
+      stopCue();                          // 正片来了，那声"嗯"该收了
+      // 字幕不再这里上屏，交给播放器按调度时间对齐
+      playAudio(m.data, m.text);
+    }
+    if (m.type === 'chunk' || m.type === 'chunk_start') {
+      stopCue();
+      thinkingUntil = 0;                 // 她开口了，去掉"在想"
+      talking = true; talkUntil = Date.now() + 2500;
+      if (m.type === 'chunk_start') {
+        // 新一轮开始了：上一轮没播完的全部掐掉。
+        // 原来这里只清队列、不停正在播的那一段，于是两轮的声音会叠着走——
+        // "同一句说了又说"有一部分就是这么来的。
+        stopAudio();
+      }
+      if (m.text) appSay(m.text);        // 只累积，先不上屏
+    }
+    if (m.type === 'sight' || m.type === 'reply') {
+      talking = true; talkUntil = Date.now() + 3400;
+      if (m.recall) {                       // 「想起」：视线飘向斜上方（回忆的姿态）
+        try { nextGaze('up'); } catch (e) {}
+      }
+      if (m.text && !subTimeline.length) setSay(m.text);   // 没声音兜底才用整段文字
+      if (m.emotion && SRV_EMO[m.emotion]) setEmotion(SRV_EMO[m.emotion], 6200);  // 服务端是权威，最后覆盖
+      if (m.action) { action = m.action; actionUntil = Date.now() + 6200; }
+      if (m.mood != null) tuneByMood(m.mood);   // 心情变了，整个人跟着变
+      thinkingUntil = 0;
+      if (m.audio) playAudio(m.audio);
+      setTimeout(() => { talking = false; }, 3200);
+      document.title = 'GOT srv=' + (m.emotion || '-') + ' local=' + emotion;
+    }
+  };
+}
+let sayBuf = '', subTimer = null;
+/* ============ 字幕时间轴 ============
+ * 声音、嘴、字三条线必须共用同一个时钟：AudioContext 的播放头。
+ * 原来字用 setTimeout 上屏：一整段的字在段首一次性全蹦出来、挂 9 秒固定——
+ * 一句念 3 秒，10 个字第 0 秒就全在屏幕上，声音断了字还挂着。
+ * 现在：每段音频排进播放时，按"字数÷时长"摊上时间轴，
+ * 渲染循环每帧按播放头算该露出几个字。声音到哪，字跟到哪。 */
+let subTimeline = [];     // {t0, t1, text, full}：text=本段，full=从头到本段的累积全文
+let subShown = -1;        // 上帧露出的字数，变了才碰 DOM
+const SUB_LINGER = 2.5;   // 说完后再挂 2.5 秒，给眼睛留收尾
+
+function subShow(text) {
+  $('say').textContent = text;
+  $('sub').classList.add('on');
+  const d = $('dbgSay'); if (d) d.textContent = text;
+  clearTimeout(subTimer);          // 时间轴接管期间，隐藏归 subTick 管
+}
+function subReset(hide) {
+  subTimeline = [];
+  subShown = -1;
+  if (hide) { $('sub').classList.remove('on'); clearTimeout(subTimer); }
+}
+function subTick() {
+  if (!actx || !subTimeline.length) return;
+  const ph = actx.currentTime;
+  const last = subTimeline[subTimeline.length - 1];
+  if (ph >= last.t1 + SUB_LINGER) {          // 话说完了，字幕谢幕
+    subTimeline = []; subShown = -1;
+    $('sub').classList.remove('on');
+    return;
+  }
+  let text = '', target = 0;
+  for (const seg of subTimeline) {
+    if (ph < seg.t0) break;                  // 后面的段还没开始（时间轴有序）
+    text = seg.full;
+    target = seg.full.length;
+    if (ph < seg.t1) {                       // 正在念的这段：按进度露字
+      const said = seg.full.length - seg.text.length;
+      target = said + Math.floor(((ph - seg.t0) / (seg.t1 - seg.t0)) * seg.text.length);
+      break;
+    }
+  }
+  if (target !== subShown && text) {
+    subShown = target;
+    subShow(text.slice(0, Math.max(0, target)));
+  }
+}
+function paintSub(t, ms) {
+  $('say').textContent = t;
+  $('sub').classList.add('on');
+  const d = $('dbgSay'); if (d) d.textContent = t;
+  clearTimeout(subTimer);
+  subTimer = setTimeout(() => $('sub').classList.remove('on'), ms || 6500);
+}
+function appSay(t) {
+  sayBuf += t;                           // 只攒着，等声音到了再上屏
+  const emo = emotionFromText(t);
+  if (emo) setEmotion(emo, 4200);
+}
+function setSay(t) {
+  sayBuf = '';
+  subReset(false);                       // 兜底整段上屏前，清掉在走的时间轴
+  paintSub(t);
+  const emo = emotionFromText(t);
+  if (emo) setEmotion(emo, 4600);
+}
+function setState(t) {
+  const el = $('state'); if (!el) return;
+  el.textContent = t; el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 3200);
+}
+
+/* ============ 声音：播放 + 实时口型 ============ */
+let actx = null, analyser = null, freqData = null;
+function ensureAudio() {
+  if (actx) return true;
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = actx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.55;
+    analyser.connect(actx.destination);
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    return true;
+  } catch (e) { return false; }
+}
+// 音频按顺序播，但不许漏拍。
+// 老写法是每段 new Audio() 挨个播：上一段的 onended 回来才起下一段，
+// 中间那几十到几百毫秒就是空档，听感上一顿一顿；元素和 MediaElementSource
+// 还从不释放，越堆越多，堆到几十个音频线程就开始掉帧——就是"手机太卡那种杂音"。
+// 现在解码成 AudioBuffer，用 AudioContext 的时钟一次性排好，段间零间隙。
+const audioQ = [];
+let audioPlaying = false;
+let audioCursor = 0;                 // 下一段该从 AudioContext 的第几秒开始
+let pumping = false;
+let endTimer = null;                 // "说完"的宽限计时器（段间空档不算说完）
+
+/* ===== 音频净化（电流音根治）=====
+ * 克隆 TTS 接口输出的音频质量随机：逐采样比对实测每千帧 12~57 个陡跳
+ * （>24% 满幅的突变），还有削波——耳朵听就是"电流音/滋啦"。
+ * 三步修：①限幅到 92% 防削波破音；②陡跳处 128 采样线性桥接抹平毛刺；
+ * ③剪掉尾部静音——它还会把字幕的逐字进度撑慢（字幕跟不上的一部分）。 */
+function polishAudio(ab) {
+  const BRIDGE = 128, JUMP = 0.24, LIMIT = 0.92;
+  for (let c = 0; c < ab.numberOfChannels; c++) {
+    const d = ab.getChannelData(c);
+    for (let i = 0; i < d.length; i++) {
+      if (d[i] > LIMIT) d[i] = LIMIT;
+      else if (d[i] < -LIMIT) d[i] = -LIMIT;
+    }
+    for (let i = 1; i < d.length; i++) {
+      if (Math.abs(d[i] - d[i - 1]) > JUMP) {
+        const a = d[i - 1], step = (d[i] - a) / BRIDGE;
+        for (let k = 0; k < BRIDGE && i + k < d.length; k++) d[i + k] = a + step * k;
+        i += BRIDGE;
+      }
+    }
+  }
+  // 剪尾：从后往前找最后一个有声采样，留 0.12s 余韵，多的静音全剪
+  const d0 = ab.getChannelData(0);
+  let last = d0.length - 1;
+  while (last > 0 && Math.abs(d0[last]) < 0.02) last--;
+  const keep = Math.min(d0.length, last + Math.round(ab.sampleRate * 0.12));
+  if (keep < d0.length - ab.sampleRate * 0.25) {   // 静音超过 0.25s 才值得剪
+    const out = actx.createBuffer(ab.numberOfChannels, keep, ab.sampleRate);
+    for (let c = 0; c < ab.numberOfChannels; c++) {
+      out.getChannelData(c).set(ab.getChannelData(c).subarray(0, keep));
+    }
+    return out;
+  }
+  return ab;
+}
+let audioRound = 0;                  // 回合号：每次打断/新一轮 +1。
+                                     // 解码是异步的，一段音频解到一半被打断，
+                                     // 解完了照样排进播放——幽灵声音就是这么来的。
+                                     // 每段排期前对一下回合号，对不上就扔。
+const liveSources = new Set();
+
+function playAudio(b64, text) {
+  if (!b64) return;
+  audioQ.push({ b64: b64, text: text || '' });
+  pumpAudio();
+}
+
+async function pumpAudio() {
+  if (pumping) return;               // 已经在排了，新段会被下面的 while 吃掉
+  pumping = true;
+  try {
+    while (audioQ.length) {
+      if (!ensureAudio()) break;
+      const myRound = audioRound;    // 这件行李属于哪个回合
+      const item = audioQ.shift();
+      const b64 = item.b64;
+      const url = b64.startsWith('data:') ? b64 : 'data:audio/mp3;base64,' + b64;
+      let ab = null;
+      try {
+        const raw = await (await fetch(url)).arrayBuffer();
+        ab = await actx.decodeAudioData(raw);
+        // 服务端已经洗过的（wav 标记）不再洗第二遍——双重桥接会把
+        // 辅音起音也抹平，声音发闷。只有兜底路径（未净化的 mp3）才洗。
+        if (!item.b64.startsWith('data:audio/wav')) ab = polishAudio(ab);
+      } catch (e) {
+        ab = null;                   // 这段解不出来就跳过，别把整条队列卡死
+      }
+      if (!ab) continue;
+      if (myRound !== audioRound) continue;   // 解码途中换了回合：旧的作废
+      if (actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+      const src = actx.createBufferSource();
+      src.buffer = ab;
+      src.connect(analyser);
+      const startAt = Math.max(actx.currentTime + 0.03, audioCursor);
+      audioCursor = startAt + ab.duration;
+      audioPlaying = true;
+      speakingNow = true;
+      liveSources.add(src);
+      clearTimeout(endTimer);            // 下一段来了，"说完"的宽限计时作废
+      src.onended = () => {
+        liveSources.delete(src);
+        // 队列暂时空 ≠ 说完了：下一段可能还在合成路上。
+        // 原来这里立刻翻状态，她在段间空档里"闭嘴发呆"，
+        // 下一段到了又猛地开口——嘴就是这样对不上的。
+        // 给 1.2 秒宽限：真没下一段，宽限到了才算说完。
+        if (!audioQ.length && actx.currentTime >= audioCursor - 0.12) {
+          endTimer = setTimeout(() => {
+            if (!audioQ.length && actx.currentTime >= audioCursor - 0.12) {
+              audioPlaying = false;
+              speakingNow = false;
+              audioCursor = 0;
+            }
+          }, 1200);
+        }
+      };
+      src.start(startAt);
+      // 静音窗精确到这段说完的时刻（含在队列里等待的时间），再留 1.5s 余量
+      // 给识别器的滞后——她停嘴后识别结果才冒出来，余量就是防这个的。
+      const playDurMs = (startAt + ab.duration - actx.currentTime) * 1000;
+      muteFor(playDurMs + 1500);
+      // 回声窗的锚点也必须是"声音真正结束的时刻"，不是文字到达的时刻——
+      // TTS 慢的时候声音比文字晚好几秒，锚错了一她的回声反而溜过去。
+      lastSpokenAt = Date.now() + playDurMs;
+      // 字幕摊上时间轴：这段从第几秒念到第几秒（t0/t1），字按字数均摊，
+      // subTick 每帧按播放头露字。声音、嘴、字共用一个时钟，永不漂移。
+      if (item.text) {
+        const prev = subTimeline[subTimeline.length - 1];
+        subTimeline.push({
+          t0: startAt,
+          t1: startAt + ab.duration,
+          text: item.text,
+          full: (prev ? prev.full : '') + item.text
+        });
+      }
+    }
+  } finally {
+    pumping = false;
+  }
+}
+
+function stopAudio() {
+  audioRound++;                      // 换回合：解码到一半的旧段作废
+  clearTimeout(endTimer);
+  audioQ.length = 0;
+  for (const s of liveSources) { try { s.stop(); } catch (e) {} }
+  liveSources.clear();
+  // 被掐断的尾音还可能被麦克风收走，留一小段静音窗。
+  // （sendText 里会把静音清零——用户主动发话是明确意图，不该被拦。）
+  muteFor(1500);
+  // 字幕时间轴跟着声音一起清：她被打断，字幕立刻谢幕，不留半句旧话
+  subReset(true);
+  audioCursor = 0;
+  audioPlaying = false;
+  speakingNow = false;
+}
+
+// 读当前音量 0..1，作为张口大小。张嘴快、闭嘴慢，看起来才像在说话
+let vSm = 0;
+function voiceLevel() {
+  if (!analyser) return 0;
+  analyser.getByteFrequencyData(freqData);
+  let s = 0;
+  for (let i = 2; i < 46; i++) s += freqData[i];       // 人声主要能量
+  const raw = Math.min(1, s / (44 * 165));
+  vSm += (raw - vSm) * (raw > vSm ? 0.55 : 0.20);
+  if (vSm < 0.02) vSm = 0;
+  return Math.min(0.88, vSm);
+}
+
+/* ============ 语音输入 ============ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+let micRetry = 0;      // 麦克风连续启动失败的次数，用来退避
+let lastMicStart = 0;  // 本次识别会话的开始时刻（判断"秒死"用）
+
+/* 她刚说过的话，用来挡外放回声。
+ * 麦克风收不到"这是我自己在说话"，只能从字面上认：一句识别结果里
+ * 七成以上的二字词都出现在她最近说的话里，就认定是回声。
+ * 用二字词而不是单字：单字比对会把用户的真话也误杀——常用字她基本都说过。 */
+let recentSpoken = '';
+let lastSpokenAt = 0;                // 她最后一次出声的时刻
+function noteSpoken(t) {
+  if (!t) return;
+  recentSpoken = (recentSpoken + t).slice(-400);
+  lastSpokenAt = Date.now();
+}
+function isEchoOfHerOwn(text) {
+  // 只在她刚说完的 6 秒内启用。真回声是"她的声音被收回去再识别"，
+  // 识别结果必然在她停嘴后一两秒内到；过了这个点她的声音早散了，
+  // 还跑字面比对只会误杀——你接她话茬说"回来了啊"，和她刚打招呼
+  // 的字一重叠就被扔掉，表现就是"麦克风好像坏了"。
+  if (!recentSpoken || Date.now() - lastSpokenAt > 6000) return false;
+  const grams = [];
+  for (let i = 0; i + 1 < text.length; i++) grams.push(text.slice(i, i + 2));
+  if (!grams.length) return false;
+  let hit = 0;
+  for (const g of grams) if (recentSpoken.indexOf(g) >= 0) hit++;
+  return hit / grams.length >= 0.7;
+}
+
+/* 时间静音：她在出声（含即时反应短句）期间，以及停嘴后一小段，
+ * 麦克风收到的识别结果一律丢弃。
+ * 为什么光靠"正在播放"标志不够：语音识别的结果有 0.5~2 秒滞后，
+ * 她说完那句时标志已经翻回 false，回声恰好从缝里钻进去。 */
+let muteUntil = 0;
+function muteFor(ms) {
+  muteUntil = Math.max(muteUntil, Date.now() + ms);
+}
+
+/* 同句去重：自激循环的标志就是同样的短语反复出现。
+ * 同一句话 5 秒内只放行一次，第二次一定是回声。 */
+let lastSentText = '', lastSentAt = 0;
+function isRepeatOfJustSent(text) {
+  if (text === lastSentText && Date.now() - lastSentAt < 5000) return true;
+  lastSentText = text; lastSentAt = Date.now();
+  return false;
+}
+
+function initVoice() {
+  if (!SR) {
+    $('s-mic').textContent = '不支持';
+    $('s-mic').className = 'off';
+    return;
+  }
+  rec = new SR();
+  rec.lang = 'zh-CN';
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onstart = () => {
+    listening = true;
+    lastMicStart = Date.now();
+    // 注意：这里不清零 micRetry。识别器"起来了就立刻死"的死循环
+    // （每秒重启 5 次）就是清零太早造成的——退避永远触发不了。
+    clog('mic-start');
+    $('s-mic').textContent = '在听'; $('s-mic').className = 'ok';
+    $('micdot').classList.add('on');
+  };
+  rec.onend = () => {
+    listening = false;
+    // 活过 5 秒才算健康会话，才配清零退避；秒死的继续往上退
+    if (Date.now() - lastMicStart > 5000) micRetry = 0; else micRetry++;
+    clog('mic-end', 'retry=' + micRetry);
+    $('s-mic').textContent = '已停'; $('s-mic').className = '';
+    $('micdot').classList.remove('on');
+    if (keepListening) {
+      // 原来是无条件 250ms 重开。麦克风被别的程序占着时会变成
+      // "开了立刻关、关了立刻开"的死循环，一直烧 CPU 还刷状态。
+      // 连续起不来就逐步退避，最长 15 秒一次。
+      micRetry++;
+      const wait = micRetry <= 3 ? 250
+                 : Math.min(15000, 250 * Math.pow(2, Math.min(micRetry - 3, 6)));
+      setTimeout(() => { try { rec.start(); } catch (e) {} }, wait);
+    }
+  };
+  rec.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      $('s-mic').textContent = '待授权'; $('s-mic').className = 'off';
+      // 浏览器要一次手势：点画面任何地方就开，不用非点按钮
+      armMicOnGesture();
+    }
+  };
+  rec.onresult = ev => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const r = ev.results[i];
+      if (!r.isFinal) {
+        // R2：边听边有反应，不等整句说完。纯本地、零 API、有时限不会残留。
+        const part = ((r[0] && r[0].transcript) || '').trim();
+        if (part.length >= 2) {
+          hearsYouUntil = Date.now() + 1500;
+          if (typeof setEmotion === 'function') setEmotion('listen', 1500);
+        }
+        continue;
+      }
+      const text = r[0].transcript.trim();
+      if (text.length < 2) continue;
+      // 噪声守门：幻觉短语和纯语气词在源头就扔，不进队列
+      if (!noiseOk(text, r[0].confidence)) { clog('drop-noise', text + ' conf=' + r[0].confidence); continue; }
+      if (speakingNow || audioPlaying || Date.now() < muteUntil) {
+        // 她在说：不扔了，记账等她说完。节流 4 秒提示一次，别让你以为麦克风坏了。
+        if (pendingSpeech.length < 4) pendingSpeech.push(text);
+        if (Date.now() > muteHintUntil) {
+          muteHintUntil = Date.now() + 4000;
+          setState('本鲸听着呢，等本鲸说完就回你');
+        }
+        continue;
+      }
+      handleSpeech(text);
+    }
+  };
+}
+
+/* ===== 噪声守门：环境噪声会让语音识别"幻觉"出短语 =====
+ * 电视声、敲键盘都能被识别成"嗯""好""是的"——当真话发上去就全乱了。
+ * 两道闸：①纯语气词（去标点后只剩嗯啊哦之类的）直接拒收；
+ * ②置信度门槛，越短越严——识别结果自带 0~1 置信度，噪声幻觉普遍很低。
+ * 注意：部分平台对正常结果也可能报 0，所以只拦"确实是低置信"的，不拦没数值的。 */
+const FILLER_RE = /^[嗯啊哦呃唉嘛吧呀呢哈诶欸是的了好的对嗯嗯是的]+$/;
+function noiseOk(text, conf) {
+  const core = text.replace(/[。，.!！?？、～~\s]/g, '');
+  if (!core) return false;
+  if (FILLER_RE.test(core)) return false;
+  if (typeof conf === 'number' && conf > 0) {
+    const need = core.length < 4 ? 0.75 : 0.6;
+    if (conf < need) return false;
+  }
+  return true;
+}
+
+/* ===== 她说话期间你说的活：先记账，她说完再统一过回声/去重滤网放行 =====
+ * 原来直接丢弃——防回声没错，但把你的真话也扔了，表现就是"怎么不理我"。
+ * 回声滤网在 drain 时照样跑：她自己声音的回声认得出来，真话放行。 */
+let pendingSpeech = [];
+function handleSpeech(text) {
+  if (isEchoOfHerOwn(text)) { clog('drop-echo', text); return; }
+  if (isRepeatOfJustSent(text)) { clog('drop-dupe', text); return; }
+  if (!wsReady) { setState('她还没连上，等两秒再说'); return; }
+  setSay('（你在说：' + text + '）');
+  hearsYouUntil = Date.now() + 2200;   // 抬头看你听一下，别一直摆着"在听"
+  thinkingUntil = Date.now() + 90000;  // 听完就该她在想了
+  proactiveGap = 5 * 60 * 1000;        // 你一开口，退避计时重置
+  nextProactive = Date.now() + proactiveGap;
+  sendText(text);
+}
+function drainSpeech() {
+  if (!pendingSpeech.length) return;
+  if (speakingNow || audioPlaying || Date.now() < muteUntil) return;
+  const q = pendingSpeech.splice(0);
+  // 逐条过回声/去重滤网：她自己声音的碎句（"四。""不知道你在。"）
+  // 单独就是回声，合并成一坨反而骗过滤网。真话碎片保留，合并成一句发。
+  const keep = q.filter(t => !isEchoOfHerOwn(t) && !isRepeatOfJustSent(t));
+  clog('drain', q.join('|'), '=> keep:', keep.join('|') || '(全弃)');
+  if (!keep.length) return;
+  handleSpeech(keep.join(' ').trim());
+}
+
+/* ===== 客户端事件日志：关键动作留痕，定期回传服务端写进 dbg.log =====
+ * 之前连接一断两边全是黑箱，"突然卡住"永远查不出谁杀的。 */
+const clogBuf = [];
+function clog(kind, detail) {
+  const t = new Date();
+  const hh = t.toTimeString().slice(0, 8) + '.' + String(t.getMilliseconds()).padStart(3, '0');
+  clogBuf.push(hh + ' ' + kind + ' ' + (detail === undefined ? '' : String(detail).slice(0, 120)));
+  if (clogBuf.length > 200) clogBuf.shift();
+}
+function flushClog() {
+  if (!clogBuf.length || !wsReady || !ws || ws.readyState !== 1) return;
+  try { ws.send(JSON.stringify({ type: 'clog', lines: clogBuf.splice(0) })); } catch (e) {}
+}
+setInterval(flushClog, 4000);
+
+/* 没有开关了。麦克风一直开着，底部那个点只是让你知道它在听。 */
+
+/* 开麦：不用点按钮，程序一起来就开。
+ * 浏览器有时要求一次用户手势，那就退一步——点画面任何地方都算。 */
+let micArmed = false;
+function armMicOnGesture() {
+  if (micArmed) return;
+  micArmed = true;
+  const once = () => {
+    document.removeEventListener('pointerdown', once);
+    document.removeEventListener('keydown', once);
+    micArmed = false;
+    keepListening = true;
+    try { rec.start(); } catch (e) {}
+  };
+  document.addEventListener('pointerdown', once);
+  document.addEventListener('keydown', once);
+  setState('点一下屏幕，本鲸就开麦');
+}
+
+function autoMic() {
+  if (!rec) return;
+  keepListening = true;
+  try {
+    rec.start();
+  } catch (e) {
+    armMicOnGesture();
+  }
+}
+
+/* ============ 物理舵机 ============ */
+let port = null, writer = null, servoReady = false, lastSent = -999;
+const mapToServo = deg => Math.round(90 - deg * 1.18);
+
+async function connectServo() {
+  if (!('serial' in navigator)) { setState('这个浏览器不支持串口'); return; }
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+    writer = port.writable.getWriter();
+    servoReady = true;
+    $('btnServo').textContent = '舵机已连'; $('btnServo').classList.add('on');
+    for (const a of [90, 70, 110, 90]) { await sendAngle(a); await new Promise(r => setTimeout(r, 300)); }
+  } catch (e) { setState('连不上舵机：' + (e.message || e.name)); }
+}
+async function sendAngle(a) {
+  if (!servoReady) return;
+  try { await writer.write(new TextEncoder().encode(a + '\n')); }
+  catch (e) { servoReady = false; $('btnServo').textContent = '舵机断开'; $('btnServo').classList.remove('on'); }
+}
+$('btnServo').addEventListener('click', connectServo);
+
+/* ============ 人脸：肤色 + 连通域 + 平滑 ============ */
+const CW = 80, CH = 60;
+const cvs = document.createElement('canvas');
+cvs.width = CW; cvs.height = CH;
+const cx2d = cvs.getContext('2d', { willReadFrequently: true });
+
+function detectFace(video) {
+  if (!video.videoWidth) return null;
+  cx2d.drawImage(video, 0, 0, CW, CH);
+  const d = cx2d.getImageData(0, 0, CW, CH).data;
+
+  const mask = new Uint8Array(CW * CH);
+  let total = 0;
+  for (let y = 0; y < CH; y++) {
+    for (let x = 0; x < CW; x++) {
+      const i = (y * CW + x) * 4;
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (r > 88 && g > 38 && b > 18 && (mx - mn) > 14 && Math.abs(r - g) > 10
+          && r > g && r >= b - 6 && mx < 252) {
+        mask[y * CW + x] = 1; total++;
+      }
+    }
+  }
+  if (total < 50) return null;
+
+  const seen = new Uint8Array(CW * CH);
+  let best = null;
+  const stack = [];
+  for (let y = 0; y < CH; y++) {
+    for (let x = 0; x < CW; x++) {
+      const idx = y * CW + x;
+      if (!mask[idx] || seen[idx]) continue;
+      let sumX = 0, sumY = 0, n = 0;
+      let minX = x, maxX = x, minY = y, maxY = y;
+      stack.length = 0; stack.push(idx); seen[idx] = 1;
+      while (stack.length) {
+        const p = stack.pop();
+        const px = p % CW, py = (p - px) / CW;
+        sumX += px; sumY += py; n++;
+        if (px < minX) minX = px; if (px > maxX) maxX = px;
+        if (py < minY) minY = py; if (py > maxY) maxY = py;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = px + dx, ny = py + dy;
+            if (nx < 0 || ny < 0 || nx >= CW || ny >= CH) continue;
+            const ni = ny * CW + nx;
+            if (mask[ni] && !seen[ni]) { seen[ni] = 1; stack.push(ni); }
+          }
+        }
+      }
+      if (n > 40 && (!best || n > best.n)) {
+        best = { n, cx: sumX / n / CW, cy: sumY / n / CH,
+                 w: (maxX - minX + 1) / CW, h: (maxY - minY + 1) / CH };
+      }
+    }
+  }
+  if (!best) return null;
+  const ratio = best.w / Math.max(best.h, 0.01);
+  if (ratio < 0.28 || ratio > 3.4) return null;
+  if (best.n < 45) return null;
+  return best;
+}
+
+/* ============ 她自己的事 ============
+ * 原来的行为循环只有一条：等你说话 → 回话 → 继续等你。
+ * 那是客服。活物是自己有在干的事，你说话才被打断，回完再回去接着干。
+ * 这一套全在本地跑，不调模型，不烧 token。
+ */
+const ACT = {
+  idle:  { name: '发呆', emo: 'idle',    gaze: 'wander', tail: 1.0, head: 0,  dur: [9, 18] },
+  swim:  { name: '游泳', emo: 'happy',   gaze: 'up',     tail: 1.7, head: -3, dur: [10, 20] },
+  look:  { name: '张望', emo: 'idle',    gaze: 'scan',   tail: 1.2, head: 0,  dur: [7, 13] },
+  doze:  { name: '打盹', emo: 'sleepy',  gaze: 'down',   tail: 0.3, head: 6,  dur: [14, 30] },
+  groom: { name: '整理', emo: 'serious', gaze: 'down',   tail: 0.6, head: 8,  dur: [6, 10] },
+  hum:   { name: '哼歌', emo: 'happy',   gaze: 'wander', tail: 2.4, head: -2, dur: [8, 16] }
+};
+const ACT_W = { idle: 30, swim: 22, look: 18, doze: 12, groom: 10, hum: 8 };
+
+let actId = 'idle', actUntil = 0, actFlashUntil = 0;
+let gazX = 0, gazY = 0, gazTX = 0, gazTY = 0, gazNext = 0, driftPhase = 0;
+let detAngle = 0, detTilt = 0;
+
+function pickAct() {
+  let r = Math.random() * 100, acc = 0;
+  for (const k in ACT_W) { acc += ACT_W[k]; if (r <= acc) return k; }
+  return 'idle';
+}
+function setAct(id) {
+  actId = id;
+  const d = ACT[id].dur;
+  actUntil = Date.now() + (d[0] + Math.random() * (d[1] - d[0])) * 1000;
+}
+function nextGaze(mode) {
+  if (mode === 'wander') {
+    gazTX = (Math.random() - 0.5) * 5; gazTY = (Math.random() - 0.5) * 3;
+    gazNext = Date.now() + opt.gazeDwell + Math.random() * opt.gazeDwell * 1.5;
+  } else if (mode === 'scan') {
+    gazTX = (Math.random() < 0.5 ? -1 : 1) * (3.2 + Math.random() * 2.4);
+    gazTY = (Math.random() - 0.5) * 1.8;
+    gazNext = Date.now() + opt.gazeDwell * 0.6 + Math.random() * opt.gazeDwell * 0.8;
+  } else if (mode === 'up') {
+    gazTX = (Math.random() - 0.5) * 3; gazTY = -3.4;
+    gazNext = Date.now() + opt.gazeDwell * 1.3 + Math.random() * opt.gazeDwell;
+  } else {
+    gazTX = (Math.random() - 0.5) * 1.8; gazTY = 2.4;
+    gazNext = Date.now() + opt.gazeDwell * 1.6 + Math.random() * opt.gazeDwell * 1.4;
+  }
+}
+setAct('idle');
+actUntil = Date.now() + 12000;
+
+/* 她自己嘟囔的话。全是本地模板，一分钟调不了一次模型，不烧 token。 */
+const SOLO = {
+  idle:  ['……', '嗯。', '今天的水有点闷。', '没什么事。'],
+  swim:  ['绕两圈。', '这块玻璃凉凉的。', '……再游一圈。'],
+  doze:  ['呼……', '再眯一会儿。'],
+  look:  ['那边是不是动了一下？', '……没有人。'],
+  groom: ['袖子歪了。', '理一下毛。'],
+  hum:   ['♪ 啦啦……', '♪ 白饭、白饭……']
+};
+let soloNext = Date.now() + 70000 + Math.random() * 90000;
+
+/* ============ 主循环 ============ */
+const video = $('video');
+let demoPhase = 0;
+/* 检测别每帧都跑。肤色框每帧都会跳动一两个像素，60 次/秒地喂给头部，
+ * 头就跟着抽。降到八次/秒，中间复用上一次的框，肉眼看起来是连续的，但抖没了。 */
+let lastDetAt = 0, cachedDet = null;
+
+/* ===== 游动系统 v3（肉眼可见版）=====
+ * 四种状态轮换：巡游（±160px 大范围）/ 趴顶（挂画面顶上）/
+ * 游近（放大 1.18 凑到镜头前）/ 游远（缩小 0.9）。
+ * 说话/听你时一律回中位、恢复原大，身体随音量轻摆。 */
+let swimX = 0, swimY = 0, swimTX = 0, swimTY = 0, swimS = 1, swimS_cur = 1;
+let nextWanderAt = Date.now() + 12000;
+let swimMode = 'cruise';
+function swimPickTarget() {
+  const r = Math.random();
+  if (r < 0.45) {                                   // 巡游
+    swimMode = 'cruise';
+    swimTX = (Math.random() * 2 - 1) * 160;
+    swimTY = (Math.random() * 2 - 1) * 55;
+    swimS = 1;
+    nextWanderAt = Date.now() + 9000 + Math.random() * 7000;
+  } else if (r < 0.65) {                            // 趴顶
+    swimMode = 'perch';
+    swimTX = (Math.random() * 2 - 1) * (window.innerWidth * 0.28);
+    swimTY = -70;
+    swimS = 0.96;
+    nextWanderAt = Date.now() + 9000 + Math.random() * 6000;
+  } else if (r < 0.85) {                            // 游近镜头
+    swimMode = 'near';
+    swimTX = (Math.random() * 2 - 1) * 90;
+    swimTY = 30;
+    swimS = 1.18;
+    nextWanderAt = Date.now() + 5000 + Math.random() * 4000;
+  } else {                                          // 游远
+    swimMode = 'far';
+    swimTX = (Math.random() * 2 - 1) * 220;
+    swimTY = -20;
+    swimS = 0.9;
+    nextWanderAt = Date.now() + 8000 + Math.random() * 5000;
+  }
+}
+function swimStep(tt, busy, talking, voice) {
+  if (Date.now() > nextWanderAt && !busy) swimPickTarget();
+  const tx = busy ? 0 : swimTX, ty = busy ? 0 : swimTY, ts = busy ? 1 : swimS;
+  const speed = busy ? 0.02 : 0.008;
+  swimX += (tx - swimX) * speed;
+  swimY += (ty - swimY) * speed;
+  swimS_cur += (ts - swimS_cur) * 0.01;
+  const bank = Math.max(-8, Math.min(8, (tx - swimX) * 0.06));  // 转身倾斜
+  const talkSway = talking ? Math.sin(tt * 2.3) * (3 + voice * 11) : 0;
+  const modeBob = swimMode === 'perch' && !busy ? Math.sin(tt * 1.6) * 2.5
+                : busy ? 0 : Math.sin(tt * 0.9) * 3.5;
+  // 画布位移硬钳制：transform 动的是整张画布，超限=整条鱼出画（事故教训）
+  const vx = Math.max(-170, Math.min(170, swimX + talkSway));
+  const vy = Math.max(-110, Math.min(110, swimY + modeBob));
+  return { x: vx, y: vy, bank, scale: swimS_cur };
+}
+
+function loop() {
+  frameNo++;
+  if (frameNo % 2) { requestAnimationFrame(loop); return; }   // 隔帧：60→30fps，鱼看不出，负载砍半
+  subTick();          // 字幕跟播放头逐字走（声音、嘴、字同一时钟）
+  drainSpeech();      // 她说完了，把你说的话从账本里放出来
+  let det = null;
+
+  if (DEMO) {
+    demoPhase += 0.014;
+    det = { cx: 0.5 + 0.33 * Math.sin(demoPhase), cy: 0.42, w: 0.34, h: 0.42, n: 500 };
+  } else if (camOK) {
+    const t = performance.now();
+    if (t - lastDetAt > 120) {
+      lastDetAt = t;
+      cachedDet = detectFace(video);
+    }
+    det = cachedDet;
+  }
+
+  const prevSeen = lastSeen;
+  if (det) {
+    lastSeen = Date.now();
+    // 平滑系数从 0.28 降到 0.12：跟着人走，但不跟着噪声走
+    smoothX += (det.cx - smoothX) * 0.12;
+    smoothY += (det.cy - smoothY) * 0.12;
+
+    // 只算出"看你"该有的角度，用不用得着另说
+    const dx = smoothX - 0.5;
+    detAngle = Math.abs(dx) < DEAD_ZONE ? 0 : -(dx * 2) * MAX_ANGLE;
+    detTilt = (smoothY - 0.45) * 24;
+
+    $('s-see').textContent = '是'; $('s-see').className = 'ok';
+
+    // 稳稳定定看见你三秒以上，才抓一帧去建"长相"的档。
+    // 之所以不立刻发：肤色检测刚起步那几帧容易认偏，抓早了存的是半张脸或者桌角。
+    if (!faceArchived) {
+      if (!faceSince) faceSince = Date.now();
+      else if (Date.now() - faceSince > 3000 && wsReady && !speakingNow) {
+        faceArchived = true;
+        try { localStorage.setItem('dfy_face_at', String(Date.now())); } catch (e) {}
+        ws.send(JSON.stringify({ type: 'remember_face', image: snap() }));
+        console.log('[建档] 抓了一帧，记你的样子');
+      }
+    }
+
+    const box = $('facebox');
+    box.style.display = 'block';
+    box.style.left = (det.cx * 100 - det.w * 50) + '%';
+    box.style.top = (det.cy * 100 - det.h * 50) + '%';
+    box.style.width = (det.w * 100) + '%';
+    box.style.height = (det.h * 100) + '%';
+
+    // 只在"你刚回来"的时候瞄一眼打个招呼，不一直盯着
+    const cameBack = !prevSeen || (Date.now() - prevSeen > 60000);
+    if (!DEMO && camOK && wsReady && !speakingNow && cameBack && Date.now() - lastGreet > GREET_COOLDOWN) {
+      lastGreet = Date.now();
+      // 不上传画面。她不需要"看懂"你在干什么，只需要知道你回来了；
+      // 真正决定她朝哪看的是本地的人脸坐标（detAngle/detTilt），跟这张图没关系。
+      ws.send(JSON.stringify({ type: 'look' }));
+    }
+  } else {
+    $('s-see').textContent = '否'; $('s-see').className = '';
+    $('facebox').style.display = 'none';
+    faceSince = 0;      // 人走开了，重新计时
+  }
+
+  const now = performance.now();
+  const tt = Date.now() / 1000;
+  const isTalking = (talking && Date.now() < talkUntil) || speakingNow;
+
+  // ===== 她在忙自己的事 =====
+  const isHearing = !isTalking && Date.now() < hearsYouUntil;
+  const isThinking = !isTalking && !isHearing && Date.now() < thinkingUntil;
+  const busy = isTalking || isHearing || isThinking;
+
+  if (!busy && Date.now() > actUntil) setAct(pickAct());
+  const A = ACT[actId];
+
+  // 一个人待久了会自言自语，隔一两分钟冒一句
+  if (!busy && Date.now() > soloNext) {
+    const lines = SOLO[actId] || SOLO.idle;
+    paintSub(lines[(Math.random() * lines.length) | 0], 3400);
+    soloNext = Date.now() + (110000 + Math.random() * 190000) * opt.soloMul;
+  }
+
+  // 更久没动静，就直接找你说话。打盹时不开腔——睡着了说话是穿帮
+  if (!busy && wsReady && actId !== 'doze' && Date.now() > nextProactive) {
+    ws.send(JSON.stringify({ type: 'proactive' }));
+    proactiveGap = Math.min(proactiveGap * 1.7 * opt.proactiveMul, 40 * 60 * 1000);   // 没回应就退避，别烦人
+    nextProactive = Date.now() + proactiveGap;
+    thinkingUntil = Date.now() + 20000;
+  }
+
+  // ===== 头：看得见你的时候就应该看着你 =====
+  // 原来只在 actId==='look' 那 18% 的时间才转向你，其余时间她自己晃，
+  // 所以看着像个不搭理人的东西。现在反过来：只要摄像头里有人，就对着你，
+  // 只有打盹、整理这种"低头的动作"才短暂移开。
+  const faceThere = det && Date.now() - lastSeen < 2500;
+  const glanceAway = actId === 'doze' || actId === 'groom';
+  const wantPerson = isTalking || isHearing || isThinking || (faceThere && !glanceAway);
+  if (wantPerson && det) {
+    targetAngle = detAngle;
+    targetTilt = detTilt;
+  } else if (faceThere && det) {
+    // 低头的动作也留一点余光：头低下去，但角度别甩开
+    targetAngle = detAngle * 0.55;
+    targetTilt = detTilt + (A.head || 0);
+  } else {
+    driftPhase += 0.006;
+    targetAngle = Math.sin(driftPhase) * 5.5 + (A.head || 0) * 0.3;
+    targetTilt = Math.sin(driftPhase * 0.63 + 1.2) * 2.6 + (A.head || 0);
+  }
+
+  // 转向再加一道限速：单帧最多挪 0.7 度。
+  // 只靠 SLEW 的话，检测框突然跳一下（人抬手、光线变），头会猛地甩过去，看着像抽搐。
+  curAngle += Math.max(-0.7, Math.min(0.7, (targetAngle - curAngle) * SLEW));
+  curTilt += Math.max(-0.55, Math.min(0.55, (targetTilt - curTilt) * SLEW));
+
+  // 眨眼：不规律间隔，偶尔连眨两下
+  if (now > nextBlinkAt) {
+    blinkStart = now;
+    nextBlinkAt = now + opt.blinkGap * 0.7 + Math.random() * opt.blinkGap * 1.3 + (Math.random() < 0.18 ? 260 : 0);
+  }
+  const bt = now - blinkStart;
+  let blink = 1;
+  if (bt < 145) blink = 1 - Math.sin(bt / 145 * Math.PI) * 0.94;
+
+  // 情绪到点回落到平静
+  if (Date.now() > emotionUntil) emotion = 'idle';
+  if (Date.now() > actionUntil) action = 'none';
+
+  // 口型：只有她自己在出声才动嘴；你在说话时她只是看着你听
+  let voice = 0;
+  if (isTalking) {
+    const real = voiceLevel();
+    voice = real > 0.07 ? real : 0.26 + Math.abs(Math.sin(tt * 9.3)) * 0.42;
+  }
+
+  // 表情优先级：说话 > 在听 > 在想 > 刚说过话的余温 > 她自己在干什么
+  const emoWarm = Date.now() < emotionUntil;
+  const shownEmotion = isTalking ? emotion
+                     : isHearing ? 'listen'
+                     : isThinking ? 'think'
+                     : emoWarm ? emotion : A.emo;
+  const tkEl = $('think');
+  if (tkEl) tkEl.classList.toggle('on', isThinking);
+
+  // 尾巴：忙的时候听服务端的，闲的时候跟着她在干的事走
+  const shownAction = busy ? action
+                    : actId === 'hum' ? 'wag_fast'
+                    : actId === 'doze' ? 'sleep'
+                    : A.tail > 1.4 ? 'wag_slow' : 'none';
+
+  // ===== 视线：人在就看你，人不在才自己乱瞟 =====
+  // 跟头部同一套判断：有脸就盯着你，打盹整理时移开一会儿。
+  let gmode = A.gaze;
+  if (isTalking || isHearing || isThinking || (faceThere && !glanceAway)) {
+    gmode = 'person';
+  }
+  if (faceThere && glanceAway) gmode = 'down';   // 低头做事，但眼角还朝着你那边偏
+  if (gmode === 'person') {
+    gazTX = -(smoothX - 0.5) * 2 * 5.5;
+    gazTY = (smoothY - 0.45) * 2 * 4;
+  } else if (Date.now() > gazNext) {
+    nextGaze(gmode);
+  }
+  gazX += (gazTX - gazX) * opt.gazeSpeed;
+  gazY += (gazTY - gazY) * opt.gazeSpeed;
+
+  if (rigReady) {
+    Rig.draw(fctx, {
+      emotion: shownEmotion, t: now,
+      look: curAngle / MAX_ANGLE,
+      voice, blink, action: shownAction,
+      gazeX: gazX, gazeY: gazY
+    });
+  }
+
+  if (isTalking) $('wave1').classList.add('on');
+  else $('wave1').classList.remove('on');
+
+  // 整体：游动（含远近缩放）+ 呼吸 + 点头
+  const sw = swimStep(tt, busy, isTalking, typeof voice === 'number' ? voice : 0);
+  const floatY = actId === 'swim' && !busy ? Math.sin(tt * 1.7) * 3.2 : 0;
+  const nod = isTalking ? Math.sin(tt * 7.2) * 2.6
+            : actId === 'doze' && !busy ? Math.sin(tt * 0.8) * 1.6
+            : Math.sin(tt * 1.4) * 0.9;
+  const breath = 1 + Math.sin(tt * 1.4) * 0.007;
+  head.style.transform =
+    'translate(' + sw.x.toFixed(1) + 'px,' + (sw.y + floatY).toFixed(1) + 'px) ' +
+    'rotate(' + sw.bank.toFixed(2) + 'deg) ' +
+    'rotateX(' + (curTilt * 0.4 + nod).toFixed(2) + 'deg) ' +
+    'scale(' + (breath * sw.scale).toFixed(4) + ')';
+  head.style.filter =
+    'brightness(' + (1 - Math.abs(curAngle) / MAX_ANGLE * 0.12).toFixed(3) + ') ' +
+    'drop-shadow(0 26px 40px rgba(0,0,0,.6))';
+
+  if (servoReady) {
+    const tg = mapToServo(curAngle);
+    if (Math.abs(tg - lastSent) >= 2) { lastSent = tg; sendAngle(tg); }
+  }
+
+  $('s-ang').textContent = curAngle.toFixed(0) + '°';
+
+  // 「想起」：独处 4~7 分钟，她自己翻出一件旧事讲出来。
+  // 忙时不打扰；深夜不起念头；发起后无论成败都重置计时（服务端还会随机抑制，避免机械感）。
+  if (!busy && wsReady && Date.now() > nextDaydreamAt) {
+    nextDaydreamAt = Date.now() + 240000 + Math.random() * 180000;
+    const h = new Date().getHours();
+    if (h < 23 && h >= 7) { clog('daydream-ask'); ws.send(JSON.stringify({ type: 'daydream' })); }
+  }
+
+  requestAnimationFrame(loop);
+}
+// 30fps 节流：一条鱼看不出 60 和 30 的区别，渲染负载直接砍半。
+// 在 loop 最前面隔帧直接返回（下一帧照排，不会停摆）。
+let frameNo = 0;
+
+function snap() {
+  // 320x240 对"认出发型/眼镜/衣服颜色"够用，但糊一点的摄像头再压就认不出了。
+  // 稍微放大到 384x288，质量 0.8，多出来的几十 KB 换描述准一点，值。
+  const c = document.createElement('canvas');
+  c.width = 384; c.height = 288;
+  c.getContext('2d').drawImage(video, 0, 0, 384, 288);
+  return c.toDataURL('image/jpeg', 0.8);
+}
+
+async function boot() {
+  connectWS();
+  initVoice();
+  autoMic();          // 一起来就开麦，不用点
+
+  // 调试用：?emo=happy 强锁表情，?talk=1 模拟说话口型
+  const q = new URLSearchParams(location.search);
+  const fe = q.get('emo');
+  if (fe) setEmotion(fe, 3.6e6);
+  if (q.has('talk')) { talking = true; talkUntil = Date.now() + 3.6e6; }
+  const auto = q.get('auto');
+  if (auto) {
+    const send = () => {
+      if (wsReady) sendText(auto);
+      else setTimeout(send, 400);
+    };
+    setTimeout(send, 600);
+  }
+
+  loop();
+
+
+
+  if (DEMO) { $('s-cam').textContent = '模拟'; $('s-cam').className = 'ok'; return; }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }, audio: false
+    });
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    await new Promise(r => setTimeout(r, 600));
+    camOK = !!video.videoWidth;
+    $('s-cam').textContent = camOK ? '已开启' : '无画面';
+    $('s-cam').className = camOK ? 'ok' : 'off';
+  } catch (e) {
+    $('s-cam').textContent = '被拒绝'; $('s-cam').className = 'off';
+    setState('摄像头打不开，要允许浏览器使用摄像头');
+  }
+}
+boot();
+</script>
+<script>
+/* 实体模式的「嘴替」：普通 HTTP 局域网页面里浏览器不提供麦克风，
+   所以手机/平板身体用打字跟她说话；语音回复与画面不受影响。 */
+(function(){
+  if (navigator.mediaDevices && window.isSecureContext !== false) return;
+  var bar = document.createElement('div');
+  bar.id = 'lanBar';
+  bar.innerHTML = '<input id="lanInput" placeholder="麦克风不可用，打字跟她说…" autocomplete="off">'
+                + '<button id="lanSend">发送</button>';
+  document.body.appendChild(bar);
+  function go(){
+    var el = document.getElementById('lanInput');
+    var v = el.value.trim();
+    if (!v) return;
+    el.value = '';
+    setSay('（你在说：' + v + '）');
+    hearsYouUntil = Date.now() + 2200;
+    thinkingUntil = Date.now() + 90000;
+    proactiveGap = 5 * 60 * 1000;
+    nextProactive = Date.now() + proactiveGap;
+    sendText(v);
+  }
+  document.getElementById('lanSend').onclick = go;
+  document.getElementById('lanInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') go();
+  });
+})();
+</script>
+<script src="形象/生命层.js"></script>
+</body>
+</html>
