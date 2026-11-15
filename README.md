@@ -42,3 +42,9 @@ in this repository. See `.gitignore` for the exclusion list.
 
 Note: personal names and absolute Windows paths in the sample
 files have been anonymised for publication.
+
+## License display
+
+GitHub shows this repository's license as "Other" because it contains two
+licenses: MIT for code and CC BY-NC-SA 4.0 for the 3D assets. Read
+`ASSETS_LICENSE.md` for a section-by-section compliance self-check.

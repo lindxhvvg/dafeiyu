@@ -20,5 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-说明：本许可证只覆盖代码与原创文档，不覆盖角色美术素材。
-角色素材另见 ASSETS_LICENSE.md。发布前请由项目所有者填写版权人。
+Note: This MIT license covers the original code and original documents in
+this repository only. The character-derived 3D assets in `3d/` are NOT
+covered by MIT; they are shared under CC BY-NC-SA 4.0 (see `3d/LICENSE.md`,
+`ASSETS_LICENSE.md` and `NOTICE.md`). Because of this split, GitHub may
+display the repository license as "Other".

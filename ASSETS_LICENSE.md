@@ -27,6 +27,26 @@ Adapter's License with the same License Elements (BY, NC, SA), version 4.0 or
 later, or a BY-NC-SA Compatible License, when Adapted Material is shared.
 `3d/LICENSE.md` is that Adapter's License for the 3D files.
 
+
+## Compliance self-check against the CC BY-NC-SA 4.0 legal code
+
+| Requirement | Where the repository meets it |
+|---|---|
+| Section 2(a)(1), NonCommercial purposes only | `3d/LICENSE.md` > Conditions; README |
+| Section 3(a)(1)(A)(i), identify creators | `3d/LICENSE.md` > Attribution chain; `NOTICE.md` |
+| Section 3(a)(1)(A)(ii), retain copyright notice | The bundled source files supply no separate copyright notice text; the authors are named in the chain |
+| Section 3(a)(1)(A)(iii), notice referring to the Public License | `3d/LICENSE.md` header and license link |
+| Section 3(a)(1)(A)(iv), notice referring to the warranty disclaimer | `3d/LICENSE.md` > No endorsement and disclaimer |
+| Section 3(a)(1)(A)(v), URI to the Licensed Material | Bilibili link in `3d/LICENSE.md` and `NOTICE.md` |
+| Section 3(a)(2), indicate modifications | `3d/LICENSE.md` > Changes |
+| Section 3(a)(3), identify the license and include text/URI | `3d/LICENSE.md`, `ASSETS_LICENSE.md` |
+| Section 3(b)(1), Adapter's License with BY/NC/SA elements | `3d/LICENSE.md` applies CC BY-NC-SA 4.0 |
+| Section 3(b)(2), include Adapter's License text/URI | `3d/LICENSE.md` plus the CC link |
+| Section 3(b)(3), no additional terms or restrictions | Stated in `3d/LICENSE.md` > Conditions |
+
+This table is a self-check against the published license text. It is not
+legal advice and it does not bind the original licensors.
+
 ## Terminology
 
 CC BY-NC-SA 4.0 is not an open-source license under the Open Source
