@@ -69,6 +69,20 @@ must preserve attribution and ShareAlike conditions. This section is
 informational only; it is not an additional license term and it is not
 legal advice.
 
+
+## If a rights holder objects (informational)
+
+This repository is a personal learning project. If any creator named in the
+attribution chain believes a file here should not be distributed, they can
+open a GitHub Issue on this repository. The maintainer will remove or modify
+the identified files within the response window GitHub provides (about one
+business day under its DMCA process) and will keep the MIT-licensed code
+available separately.
+
+This statement describes the maintainer's own intended action. It adds no
+terms for downstream reusers, is not an additional license condition, and is
+not legal advice.
+
 ## Terminology
 
 CC BY-NC-SA 4.0 is not an open-source license under the Open Source

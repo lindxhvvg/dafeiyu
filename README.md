@@ -54,3 +54,6 @@ licenses: MIT for code and CC BY-NC-SA 4.0 for the 3D assets. Read
 The repository imposes no extra conditions on reusers; see "Downstream use
 and responsibility" in `ASSETS_LICENSE.md` for what the license itself says
 about warranties, liability and continuing obligations.
+
+If a rights holder objects to any file, see "If a rights holder
+objects" in `ASSETS_LICENSE.md`.
