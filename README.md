@@ -18,11 +18,16 @@ This repository contains the source, design documents and 3D assets.
 
 ## Character artwork is NOT included
 
-The runtime character layers under `形象/rig/` are not distributed here.
-They are derived from "鲸鱼娘形象" by 上善无形 (Bilibili UID 4456176),
-licensed CC BY-NC-SA 4.0. See `ASSETS_LICENSE.md` before using any
-character assets. The 3D files may constitute adaptations of that work;
-the MIT license in this repository does not cover them.
+The runtime 2D character layers are not distributed here. The character
+originates from "溟月 / 鲸鱼娘形象" by 上善无形 (Bilibili UID 4456176) and
+the maid-whale redesign by ZipZipPipe, both published under CC BY-NC-SA 4.0.
+
+The 3D files in `3d/` are adaptations and are shared under **CC BY-NC-SA
+4.0** as their Adapter's License (see `3d/LICENSE.md` and `NOTICE.md`).
+Original code and documents are MIT (`LICENSE`). CC BY-NC-SA 4.0 is not an
+open-source license under the OSI definition because it forbids commercial
+use; what is open-sourced here is the code. See `ASSETS_LICENSE.md` for the
+full attribution chain and conditions.
 
 ## Run locally
 
